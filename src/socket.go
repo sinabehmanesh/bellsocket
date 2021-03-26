@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
@@ -55,7 +56,7 @@ func main() {
 	http.Handle("/", fileServer)
 	fmt.Println("file server UP!")
 
-	http.HandleFunc("/client", WsClient)
+	//http.HandleFunc("/client", WsClient)
 
 	http.HandleFunc("/bell", WsHandler)
 	fmt.Println("WsHandler defiend!")
