@@ -4,12 +4,25 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"sync"
 
 	"github.com/gorilla/websocket"
 )
 
+//Message object definition
+type Message struct {
+	Email    string `json:"email"`
+	Username string `json:"username"`
+	Message  string `json:"message"`
+}
+
+//declare clients
+var Clients = make(map[*websocket.Conn]bool)
+
+//declare channel
+var Broadcast = make(chan Message)
+
+//declare incoming message srtucture
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -17,6 +30,7 @@ var upgrader = websocket.Upgrader{
 
 //wsHandler for websocket started pack :D
 func WsHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("new message!")
 	upgrader.CheckOrigin = func(r *http.Request) bool {
 		return true
 	}
@@ -27,13 +41,38 @@ func WsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer ws.Close()
 
-	log.Println("\nClient ", r.RemoteAddr, " CONNECTED!")
-	err = ws.WriteMessage(1, []byte("Good day mate!"))
-	if err != nil {
-		log.Fatal(err)
-	}
+	//add client
+	Clients[ws] = true
 
-	WsReader(ws)
+	for {
+		var msg Message
+		err := ws.ReadJSON(&msg)
+		if err != nil {
+			log.Fatal(err)
+			delete(Clients, ws)
+			break
+		}
+		fmt.Println("data is ", msg)
+		Broadcast <- msg
+	}
+	//	WsReader(ws)
+}
+
+//HandleMessage sends message data to all the clients!
+func HandleMessage(wg *sync.WaitGroup) {
+	for {
+		msg := <-Broadcast
+		for client := range Clients {
+			err := client.WriteJSON(msg)
+			if err != nil {
+				log.Fatal(err)
+				client.Close()
+				delete(Clients, client)
+			}
+		}
+	}
+	wg.Done()
+
 }
 
 //WsReader to read client data
@@ -61,19 +100,15 @@ func SetupRoutes(wg *sync.WaitGroup) {
 	fmt.Println("file server UP!")
 
 	//Handler html socket
-	http.HandleFunc("/bell", WsHandler)
+	http.HandleFunc("/ws", WsHandler)
 
 	//Done with the wait Group
+	fmt.Println("Routes are SETTED!")
 	wg.Done()
 }
 
-type SocketData struct {
-	Text string `name:"text"`
-}
-
 func main() {
-	RedisPort := os.Getenv("PORT")
-	fmt.Println(RedisPort)
+
 	//add waitgroup (usage on SetupRoutes)
 	var wg sync.WaitGroup
 
@@ -82,9 +117,14 @@ func main() {
 	wg.Wait()
 
 	//http.HandleFunc("/client", WsClient)
+	fmt.Println("first goroutine is done!!")
+	//wg.Add(1)
+	go HandleMessage(&wg)
+	wg.Wait()
 
 	fmt.Println("WsHandler defiend!")
 	//server on port 8080
-	fmt.Println("Starting webService[:8080].....")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	fmt.Println("Starting webService[:8000].....")
+	log.Fatal(http.ListenAndServe(":8000", nil))
+
 }
