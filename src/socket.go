@@ -71,7 +71,7 @@ func HandleMessage(wg *sync.WaitGroup) {
 			}
 		}
 	}
-	wg.Done()
+	//wg.Done()
 
 }
 
