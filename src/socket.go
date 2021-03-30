@@ -71,24 +71,6 @@ func HandleMessage(wg *sync.WaitGroup) {
 			}
 		}
 	}
-	//wg.Done()
-
-}
-
-//WsReader to read client data
-func WsReader(conn *websocket.Conn) {
-	for {
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println("Client message: ")
-		fmt.Println(string(p))
-		if err := conn.WriteMessage(messageType, p); err != nil {
-			log.Fatal(err)
-			return
-		}
-	}
 }
 
 //SetupRoutes for handlers and URLS
@@ -118,7 +100,7 @@ func main() {
 
 	//http.HandleFunc("/client", WsClient)
 	fmt.Println("first goroutine is done!!")
-	//wg.Add(1)
+
 	go HandleMessage(&wg)
 	wg.Wait()
 
